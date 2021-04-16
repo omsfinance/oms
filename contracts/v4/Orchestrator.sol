@@ -46,7 +46,7 @@ contract Orchestrator is Ownable {
         external
 		onlyOwner
     {
-        require(msg.sender == tx.origin);  // solhint-disable-line avoid-tx-origin
+        require(msg.sender == tx.origin, 'The transaction owner must also be the msg sender');  // solhint-disable-line avoid-tx-origin
 
         policy.rebase();
 

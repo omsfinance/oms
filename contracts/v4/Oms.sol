@@ -20,7 +20,7 @@ contract Oms is ERC20Detailed, Ownable {
     address public omsPolicy;
 
     modifier onlyOmsPolicy() {
-        require(msg.sender == omsPolicy);
+        require(msg.sender == omsPolicy, 'Only Oms Policy can call this function');
         _;
     }
 
@@ -29,18 +29,18 @@ contract Oms is ERC20Detailed, Ownable {
     bool public tokenPaused;
 
     modifier whenRebaseNotPaused() {
-        require(!rebasePaused);
+        require(!rebasePaused, 'Rebase can not be paused');
         _;
     }
 
     modifier whenTokenNotPaused() {
-        require(!tokenPaused);
+        require(!tokenPaused, 'Token can not be paused');
         _;
     }
 
     modifier validRecipient(address to) {
-        require(to != address(0x0));
-        require(to != address(this));
+        require(to != address(0x0), 'The address can not be a zero-address');
+        require(to != address(this), 'The address can not be an instance of this contract');
         _;
     }
 
