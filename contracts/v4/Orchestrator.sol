@@ -29,6 +29,7 @@ contract Orchestrator is Ownable {
      * @param policy_ Address of the Oms policy.
      */
     constructor(address policy_) public {
+        require(policy_ != address(0), 'The address can not be a zero-address');
         Ownable.initialize(msg.sender);
         policy = OmsPolicy(policy_);
     }
