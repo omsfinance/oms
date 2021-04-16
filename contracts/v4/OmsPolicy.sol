@@ -232,9 +232,7 @@ contract OmsPolicy is Ownable {
         minRebaseTimeIntervalSec = 1 days;
         rebaseWindowOffsetSec = 46800;  // 3PM UTC
         rebaseWindowLengthSec = 30 minutes;
-        lastRebaseTimestampSec = 0;
-        epoch = 0;
-
+        
         oms = oms_;
     }
 

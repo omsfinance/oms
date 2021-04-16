@@ -60,7 +60,7 @@ contract Oracle {
     
     function getData() external returns (uint amountOut, bool status) {
         update();
-        uint price = 10**18;
+        uint price;
         if (token0 != usdc) {
             price = price0Average.mul(10**18).decode144();
             price = price.mul(10**12);
