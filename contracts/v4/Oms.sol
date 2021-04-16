@@ -66,6 +66,7 @@ contract Oms is ERC20Detailed, Ownable {
         * @param omsPolicy_ The address of the oms policy contract to use for authentication.
         */
     function setOmsPolicy(address omsPolicy_) external onlyOwner {
+        require(omsPolicy_ != address(0), 'The address can not be a zero-address');
         omsPolicy = omsPolicy_;
         emit LogOmsPolicyUpdated(omsPolicy_);
     }
@@ -132,6 +133,9 @@ contract Oms is ERC20Detailed, Ownable {
     }
 
     function initialize(address owner_, address reserve_) public initializer {
+        require(owner_ != address(0), 'The address can not be a zero-address');
+        require(reserve_ != address(0), 'The address can not be a zero-address');
+        
         ERC20Detailed.initialize("Oms", "OMS", uint8(DECIMALS));
         Ownable.initialize(owner_);
 

@@ -128,6 +128,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(marketOracle_ != address(0), 'The address can not be a zero-address');
         marketOracle = marketOracle_;
     }
 
@@ -139,6 +140,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(orchestrator_ != address(0), 'The address can not be a zero-address');
         orchestrator = orchestrator_;
     }
 
@@ -202,11 +204,11 @@ contract OmsPolicy is Ownable {
      * @notice Sets the asset contract address to rebase.
      * @param targetAsset_ Address of the asset token.
      */
-    function setTargetAsset(
-        address targetAsset_)
+    function setTargetAsset(address targetAsset_)
         external
         onlyOwner
     {
+        require(targetAsset_ != address(0), 'The address can not be a zero-address');
         targetAsset = targetAsset_;
     }
 
@@ -219,6 +221,7 @@ contract OmsPolicy is Ownable {
         public
         initializer
     {
+        require(owner_ != address(0), 'The address can not be a zero-address');
         Ownable.initialize(owner_);
 
         // deviationThreshold = 0.05e18 = 5e16
