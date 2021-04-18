@@ -62,12 +62,10 @@ contract Oracle {
         update();
         uint price;
         if (token0 != usdc) {
-            price = price0Average.mul(10**18).decode144();
-            price = price.mul(10**12);
+            price = price0Average.mul(10**12).decode144();
         } else {
             require(token1 != usdc, 'OraclePrice: INVALID_TOKEN');
-            price = price1Average.mul(10**18).decode144();
-            price = price.mul(10**12);
+            price = price1Average.mul(10**12).decode144();
         }
         
         return (price, true);
