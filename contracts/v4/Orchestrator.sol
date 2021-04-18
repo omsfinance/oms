@@ -139,13 +139,7 @@ contract Orchestrator is Ownable {
             let dataAddress := add(data, 32)
 
             result := call(
-                // 34710 is the value that solidity is currently emitting
-                // It includes callGas (700) + callVeryLow (3, to pay for SUB)
-                // + callValueTransferGas (9000) + callNewAccountGas
-                // (25000, in case the destination address does not exist and needs creating)
-                sub(gas, 34710),
-
-
+                gas,
                 destination,
                 0, // transfer value in wei
                 dataAddress,
