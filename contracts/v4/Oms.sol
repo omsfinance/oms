@@ -139,9 +139,6 @@ contract Oms is ERC20Detailed, Ownable {
         ERC20Detailed.initialize("Oms", "OMS", uint8(DECIMALS));
         Ownable.initialize(owner_);
 
-        rebasePaused = false;
-        tokenPaused = false;
-
         _totalSupply = INITIAL_OMS_SUPPLY;
         _gonBalances[owner_] = TOTAL_GONS;
         _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
