@@ -19,11 +19,12 @@ contract Oracle {
     IUniswapV2Pair immutable pair;
     address public immutable token0;
     address public immutable token1;
-    address internal usdc = 0x1b3924f88A5ee1D9C86b97dce55d99d4B22dB569;
+    address internal usdc = 0xe22da380ee6B445bb8273C81944ADEB6E8450422;
 
     uint    public price0CumulativeLast;
     uint    public price1CumulativeLast;
     uint32  public blockTimestampLast;
+    uint256 public tokenPrice;
     FixedPoint.uq112x112 public price0Average;
     FixedPoint.uq112x112 public price1Average;
 
@@ -60,15 +61,18 @@ contract Oracle {
     
     function getData() external returns (uint amountOut, bool status) {
         update();
-        uint price;
+        
         if (token0 != usdc) {
-            price = price0Average.mul(10**12).decode144();
+            amountOut = price0Average.mul(10**18).decode144();
+            amountOut = amountOut.mul(10**12);
         } else {
             require(token1 != usdc, 'OraclePrice: INVALID_TOKEN');
-            price = price1Average.mul(10**12).decode144();
+            amountOut = price1Average.mul(10**18).decode144();
+            amountOut = amountOut.mul(10**12);
         }
         
-        return (price, true);
+        tokenPrice = amountOut;
+        status = true;
     }
 
     // note this will always return 0 before update has been called successfully for the first time.
