@@ -46,7 +46,7 @@ contract Oms is ERC20Detailed, Ownable {
 
     uint256 private constant DECIMALS = 18;
     uint256 public constant MAX_UINT256 = ~uint256(0);
-    uint256 private constant INITIAL_OMS_SUPPLY = 10000000 * 10**DECIMALS;
+    uint256 private constant INITIAL_OMS_SUPPLY = 5000000 * 10**DECIMALS;
 
     // TOTAL_GONS is a multiple of INITIAL_OMS_SUPPLY so that _gonsPerFragment is an integer.
     // Use the highest value that fits in a uint256 for max granularity.
@@ -132,9 +132,8 @@ contract Oms is ERC20Detailed, Ownable {
         return _totalSupply;
     }
 
-    function initialize(address owner_, address reserve_) public initializer {
+    function initialize(address owner_) public initializer {
         require(owner_ != address(0), 'The address can not be a zero-address');
-        require(reserve_ != address(0), 'The address can not be a zero-address');
         
         ERC20Detailed.initialize("Oms", "OMS", uint8(DECIMALS));
         Ownable.initialize(owner_);
@@ -144,13 +143,6 @@ contract Oms is ERC20Detailed, Ownable {
         _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
 
         emit Transfer(address(0x0), owner_, _totalSupply);
-
-        uint256 reserveValue = 50000 * 10**DECIMALS;
-        uint256 reserveGonValue = reserveValue.mul(_gonsPerFragment);
-        _gonBalances[owner_] = _gonBalances[owner_].sub(reserveGonValue);
-        _gonBalances[reserve_] = _gonBalances[reserve_].add(reserveGonValue);
-    
-        emit Transfer(owner_, reserve_, reserveGonValue);
     }
 
     /**
