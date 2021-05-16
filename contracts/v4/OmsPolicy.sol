@@ -113,6 +113,9 @@ contract OmsPolicy is Ownable {
         }
 
         uint256 supplyAfterRebase = oms.rebase(epoch, supplyDelta);
+
+        marketOracle.sync();
+
         assert(supplyAfterRebase <= MAX_SUPPLY);
         emit LogRebase(epoch, exchangeRate, supplyDelta, now);
     }

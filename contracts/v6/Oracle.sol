@@ -14,7 +14,9 @@ contract Oracle {
     using SafeMath for uint;
     using FixedPoint for *;
 
-    uint public constant PERIOD = 24 hours;
+    event SyncOracle(IUniswapV2Pair indexed _pair, uint32 _blockTimestampLast);
+
+    uint public constant PERIOD = 23 hours;
 
     IUniswapV2Pair immutable pair;
     address public immutable token0;
@@ -83,5 +85,11 @@ contract Oracle {
             require(token == token1, 'OraclePrice: INVALID_TOKEN');
             amountOut = price1Average.mul(amountIn).decode144();
         }
+    }
+
+    // Synchronise the price data on the uniswap pair contract
+    function sync() external {
+        pair.sync();
+        emit SyncOracle(pair, blockTimestampLast);
     }
 }
