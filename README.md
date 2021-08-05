@@ -16,6 +16,7 @@ In-depth documentation on Oms and how it integrates with the rest of the Oms Pla
 
 `truffle test`
 
+
 ## Flatten file
 
 `truffle-flattener contracts/v4/Oms.sol > scratch/Oms.sol`
