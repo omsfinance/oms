@@ -5,6 +5,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Bscrypt fix
+      run: npm install github:barrysteyn/node-scrypt#fb60a8d3c158fe115a624b5ffa7480f3a24b03fb
     - name: Install modules
       run: npm install
     - name: Compile contracts
