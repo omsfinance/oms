@@ -18,6 +18,7 @@ In-depth documentation on Oms and how it integrates with the rest of the Oms Pla
 
 ## Flatten file
 
+
 `truffle-flattener contracts/v4/Oms.sol > scratch/Oms.sol`
 `truffle-flattener contracts/v4/OmsPolicy.sol > scratch/OmsPolicy.sol`
 `truffle-flattener contracts/v4/Orchestrator.sol > scratch/Orchestrator.sol`
