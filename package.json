@@ -19,7 +19,7 @@
     "zos-lib": "^2.2.2"
   },
   "dependencies": {
-    "truffle": "4.1.17",
+    "truffle": "5.2.3",
     "bignumber.js": "^9.0.1",
     "chai": "^4.1.2",
     "chai-bignumber": "^2.0.2",
