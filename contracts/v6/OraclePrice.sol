@@ -2,13 +2,13 @@
 pragma solidity ^0.6.12;
 
 import "./interface/KeeperCompatibleInterface.sol";
-import "./interface/OmsPolicy.sol";
-import "./interface/EACAggregatorProxy.sol";
+import "./interface/OmsPolicyInterface.sol";
+import "./interface/EACAggregatorProxyInterface.sol";
 import "./library/SafeMath.sol";
 import "./common/WhitelistAdminRole.sol";
 import "./common/Ownable.sol";
 
-contract OraclePrice is Ownable, WhitelistAdminRole, KeeperCompatibleInterface, OmsPolicy, EACAggregatorProxy {
+contract OraclePrice is Ownable, WhitelistAdminRole, KeeperCompatibleInterface, OmsPolicyInterface, EACAggregatorProxyInterface {
     using SafeMath for uint256;
     
     address[] public aggregatorContracts;
