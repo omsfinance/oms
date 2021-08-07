@@ -10,6 +10,6 @@ jobs:
     - name: Install modules
       run: npm install
     - name: Compile contracts
-      run: npm run build -- -config=truffle_config_v4.js
+      run: npm run build
     - name: Test contracts
       run: npm test

@@ -1,5 +1,5 @@
 {
-  "name": "tutorialtoken",
+  "name": "oms",
   "version": "1.0.0",
   "description": "",
   "main": "truffle.js",
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "lite-server",
-    "build": "truffle compile",
+    "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
     "test": "truffle test",
     "run95": "eth95 ./build/contracts"
   },
