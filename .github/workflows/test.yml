@@ -10,6 +10,6 @@ jobs:
     - name: Install modules
       run: npm install
     - name: Compile contracts
-      run: npm run build
+      run: npm run run95 & npm run build
     - name: Test contracts
       run: npm test
