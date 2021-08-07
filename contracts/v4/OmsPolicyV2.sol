@@ -9,15 +9,6 @@ import "./common/Initializable.sol";
 import "./common/Ownable.sol";
 import "./Oms.sol";
 
-/**
- * @title uOms Monetary Supply Policy
- * @dev This is an implementation of the uOms Ideal Money protocol.
- *      uOms operates symmetrically on expansion and contraction. It will both split and
- *      combine coins to maintain a stable unit price.
- *
- *      This component regulates the token supply of the uOms ERC20 token in response to
- *      market oracles.
- */
 contract OmsPolicy is Ownable {
     using SafeMath for uint256;
     using SafeMathInt for int256;
@@ -30,10 +21,10 @@ contract OmsPolicy is Ownable {
         uint256 timestampSec
     );
 
-    Oms public uFrags;
+    Oms public oms;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
-    // (eg) An oracle value of 1.5e18 it would mean 1 Ample is trading for $1.50.
+    // (eg) An oracle value of 1.5e18 it would mean 1 Oms is trading for $1.50.
     IOracle public marketOracle;
 
     // The target asset contract address.
@@ -87,12 +78,12 @@ contract OmsPolicy is Ownable {
     address public orchestrator;
 
     modifier onlyOrchestrator() {
-        require(msg.sender == orchestrator);
+        require(msg.sender == orchestrator, 'Only Orchestrator can call this function');
         _;
     }
 
     modifier onlyAdmin() {
-        require(admins[msg.sender] == true, "Not admin role");
+        require(admins[msg.sender] == true, 'Not admin role');
         _;
     }
 
@@ -101,7 +92,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(admins[_admin] != true, "already admin role");
+        require(admins[_admin] != true, 'already admin role');
         admins[_admin] == _status;
     }
 
@@ -130,10 +121,10 @@ contract OmsPolicy is Ownable {
      *      and targetRate is 1
      */
     function rebase() external onlyOrchestrator {
-        require(inRebaseWindow());
+        require(inRebaseWindow(), 'Must be in the rebase window');
 
         // This comparison also ensures there is no reentrancy.
-        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now);
+        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now, 'Not allowed to rebase so soon since the last rebase');
 
         // Snap the rebase time to the start of this window.
         lastRebaseTimestampSec = now.sub(
@@ -146,7 +137,7 @@ contract OmsPolicy is Ownable {
         uint256 exchangeRate;
         bool rateValid;
         (exchangeRate, rateValid) = marketOracle.getData();
-        require(rateValid);
+        require(rateValid, 'Rate is not valid');
 
         if (exchangeRate > MAX_RATE) {
             exchangeRate = MAX_RATE;
@@ -157,11 +148,14 @@ contract OmsPolicy is Ownable {
         // Apply the Dampening factor.
         supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
 
-        if (supplyDelta > 0 && uFrags.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
-            supplyDelta = (MAX_SUPPLY.sub(uFrags.totalSupply())).toInt256Safe();
+        if (supplyDelta > 0 && oms.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
+            supplyDelta = (MAX_SUPPLY.sub(oms.totalSupply())).toInt256Safe();
         }
 
-        uint256 supplyAfterRebase = uFrags.rebase(epoch, supplyDelta);
+        uint256 supplyAfterRebase = oms.rebase(epoch, supplyDelta);
+
+        marketOracle.sync();
+
         assert(supplyAfterRebase <= MAX_SUPPLY);
         emit LogRebase(epoch, exchangeRate, supplyDelta, now);
     }
@@ -174,6 +168,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(marketOracle_ != address(0), 'The address can not be a zero-address');
         marketOracle = marketOracle_;
     }
 
@@ -185,6 +180,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(orchestrator_ != address(0), 'The address can not be a zero-address');
         orchestrator = orchestrator_;
     }
 
@@ -213,7 +209,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(rebaseLag_ > 0);
+        require(rebaseLag_ > 0, 'Rebase lag must be greater than 0');
         rebaseLag = rebaseLag_;
     }
 
@@ -236,8 +232,8 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(minRebaseTimeIntervalSec_ > 0);
-        require(rebaseWindowOffsetSec_ < minRebaseTimeIntervalSec_);
+        require(minRebaseTimeIntervalSec_ > 0, 'Min rebase time interval must be greater than 0');
+        require(rebaseWindowOffsetSec_ < minRebaseTimeIntervalSec_, 'Rebase window offset must be less than min rebase time interval');
 
         minRebaseTimeIntervalSec = minRebaseTimeIntervalSec_;
         rebaseWindowOffsetSec = rebaseWindowOffsetSec_;
@@ -261,10 +257,11 @@ contract OmsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, Oms uFrags_)
+    function initialize(address owner_, Oms oms_)
         public
         initializer
     {
+        require(owner_ != address(0), 'The address can not be a zero-address');
         Ownable.initialize(owner_);
 
         // deviationThreshold = 0.05e18 = 5e16
@@ -273,12 +270,10 @@ contract OmsPolicy is Ownable {
         // rebaseLag = 30;
         rebaseLag = 10;
         minRebaseTimeIntervalSec = 1 days;
-        rebaseWindowOffsetSec = 46800;  // 3PM UTC
+        rebaseWindowOffsetSec = 39600;  // 11AM UTC
         rebaseWindowLengthSec = 30 minutes;
-        lastRebaseTimestampSec = 0;
-        epoch = 0;
-
-        uFrags = uFrags_;
+        
+        oms = oms_;
     }
 
     /**
@@ -307,7 +302,7 @@ contract OmsPolicy is Ownable {
 
         // supplyDelta = totalSupply * (rate - targetRate) / targetRate
         int256 targetRateSigned = targetRate.toInt256Safe();
-        return uFrags.totalSupply().toInt256Safe()
+        return oms.totalSupply().toInt256Safe()
             .mul(rate.toInt256Safe().sub(targetRateSigned))
             .div(targetRateSigned);
     }
