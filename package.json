@@ -7,10 +7,10 @@
     "test": "test"
   },
   "scripts": {
-    "dev": "truffle develop",
-    "start": "ganache-cli",
+    "dev": "ganache-cli",
+    "start": "truffle develop",
     "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
-    "test": "truffle test --config=contracts/v4/config.js && truffle test --config=contracts/v6/config.js",
+    "test": "truffle test --show-events --config=contracts/v4/config.js && truffle test --show-events --config=contracts/v6/config.js",
     "run95": "eth95 ./build/contracts"
   },
   "author": "",
