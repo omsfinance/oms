@@ -11,7 +11,5 @@ jobs:
       run: npm install
     - name: Compile contracts
       run:  npm run build
-    - name: start emulator
-      run:  npm run run95 &
     - name: Test contracts
-      run: npm test
+      run: npx start-server-and-test run95 http://localhost:3000/ test
