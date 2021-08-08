@@ -11,5 +11,7 @@ jobs:
       run: npm install
     - name: Compile contracts
       run:  npm run build
+    - name: start ganache
+      run: npm start &
     - name: Test contracts
-      run: npx start-server-and-test start http://127.0.0.1:8545 test
+      run: npm test
