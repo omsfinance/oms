@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "dev": "lite-server",
+    "dev": "truffle develop",
     "start": "ganache-cli",
     "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
     "test": "truffle test --config=contracts/v4/config.js && truffle test --config=contracts/v6/config.js",
