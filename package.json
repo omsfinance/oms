@@ -10,7 +10,7 @@
     "dev": "lite-server",
     "start": "ganache-cli",
     "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
-    "test": "truffle test",
+    "test": "truffle test --config=contracts/v4/config.js && truffle test --config=contracts/v6/config.js",
     "run95": "eth95 ./build/contracts"
   },
   "author": "",
