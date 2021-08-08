@@ -12,4 +12,4 @@ jobs:
     - name: Compile contracts
       run:  npm run build
     - name: Test contracts
-      run: npx start-server-and-test run95 http://localhost:3000/ test
+      run: npx start-server-and-test start http://localhost:8545/ test
