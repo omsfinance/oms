@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "lite-server",
+    "start": "ganache-cli",
     "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
     "test": "truffle test",
     "run95": "eth95 ./build/contracts"
