@@ -36,9 +36,6 @@ contract OmsPolicy is Ownable {
     // (eg) An oracle value of 1.5e18 it would mean 1 Ample is trading for $1.50.
     IOracle public marketOracle;
 
-    // The target asset contract address.
-    address public targetAsset;
-
     // If the current exchange rate is within this fractional distance from the target, no supply
     // update is performed. Fixed point number--same format as the rate.
     // (ie) abs(rate - targetRate) / targetRate < deviationThreshold, then no supply change.
@@ -242,18 +239,6 @@ contract OmsPolicy is Ownable {
         minRebaseTimeIntervalSec = minRebaseTimeIntervalSec_;
         rebaseWindowOffsetSec = rebaseWindowOffsetSec_;
         rebaseWindowLengthSec = rebaseWindowLengthSec_;
-    }
-
-    /**
-     * @notice Sets the asset contract address to rebase.
-     * @param targetAsset_ Address of the asset token.
-     */
-    function setTargetAsset(
-        address targetAsset_)
-        external
-        onlyOwner
-    {
-        targetAsset = targetAsset_;
     }
 
     /**

@@ -5,10 +5,9 @@ import "./interface/KeeperCompatibleInterface.sol";
 import "./interface/OmsPolicy.sol";
 import "./interface/EACAggregatorProxy.sol";
 import "./library/SafeMath.sol";
-import "./common/WhitelistAdminRole.sol";
 import "./common/Ownable.sol";
 
-contract OraclePrice is Ownable, WhitelistAdminRole, KeeperCompatibleInterface, OmsPolicy, EACAggregatorProxy {
+contract OraclePrice is Ownable, KeeperCompatibleInterface {
     using SafeMath for uint256;
     
     address[] public aggregatorContracts;
@@ -70,6 +69,9 @@ contract OraclePrice is Ownable, WhitelistAdminRole, KeeperCompatibleInterface, 
     }
 
     function performUpkeep(bytes calldata performData) external override onlyWhitelistAdmin {
+        bool upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        require(upkeepNeeded == true, "Can Not call this method at this time");
+
         lastTimeStamp = block.timestamp;
         counter = counter + 1;
 
