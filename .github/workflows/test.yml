@@ -12,6 +12,6 @@ jobs:
     - name: Compile contracts
       run:  npm run build
     - name: start ganache
-      run: npm start &
+      run: npm run dev &
     - name: Test contracts
       run: npm test
