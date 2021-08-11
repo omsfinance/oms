@@ -30,6 +30,12 @@ contract OmsPolicy is Ownable {
         uint256 timestampSec
     );
 
+    event LogTargetPrice(
+        uint256 lastTargetPrice,
+        uint256 newTargetPrice,
+        uint256 timestampSec
+    );
+
     Oms public uFrags;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
@@ -109,6 +115,7 @@ contract OmsPolicy is Ownable {
     {
         lastTargetPrice = TARGET_RATE;
         TARGET_RATE = _targetPrice;
+        emit LogTargetPrice(lastTargetPrice, TARGET_RATE, block.timestamp);
     }
 
     function targetPrice() 
