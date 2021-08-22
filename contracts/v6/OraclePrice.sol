@@ -47,19 +47,6 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         return latestPrice;
     }
     
-    function getAveragePrice() public view returns (uint256) {
-        uint256 length = aggregatorContracts.length;
-        uint256 sumPrice = 0;
-        for(uint256 i=0; i<length; i++) {
-            int256 latestPrice = EACAggregatorProxy(aggregatorContracts[i]).latestAnswer();
-            uint8 decimals = EACAggregatorProxy(aggregatorContracts[i]).decimals();
-            uint256 restDec = SafeMath.sub(18, uint256(decimals));
-            latestPrice = int256(SafeMath.mul(uint256(latestPrice), 10**restDec));
-            sumPrice = SafeMath.add(sumPrice, uint256(latestPrice));
-        }
-        return SafeMath.div(sumPrice, length);
-    }
-    
     function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
 
@@ -68,7 +55,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         performData = checkData;
     }
 
-    function performUpkeep(bytes calldata performData) external override onlyWhitelistAdmin {
+    function performUpkeep(bytes calldata performData) external override {
         bool upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
         require(upkeepNeeded == true, "Can Not call this method at this time");
 
@@ -83,16 +70,16 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     
     function updateTargetPrice() internal {
         uint256 length = aggregatorContracts.length;
-        uint256 sumPrice = 0;
+        uint256[] memory oraclePrice;
         for(uint256 i=0; i<length; i++) {
             int256 latestPrice = EACAggregatorProxy(aggregatorContracts[i]).latestAnswer();
             uint8 decimals = EACAggregatorProxy(aggregatorContracts[i]).decimals();
             uint256 restDec = SafeMath.sub(18, uint256(decimals));
             latestPrice = int256(SafeMath.mul(uint256(latestPrice), 10**restDec));
-            sumPrice = SafeMath.add(sumPrice, uint256(latestPrice));
+            oraclePrice[i] = uint256(latestPrice);
         }
         uint256 targetRate = OmsPolicy(policyContract).targetPrice();
-        uint256 rate = SafeMath.div(sumPrice, length);
+        uint256 rate  = OmsPolicy(policyContract).calculateReferenceRate(oraclePrice);
         bool status = withinDeviationThreshold(rate, targetRate);
         
         if(status) {

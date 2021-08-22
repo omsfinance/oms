@@ -1,4 +1,4 @@
-pragma solidity =0.6.6;
+pragma solidity ^0.6.6;
 
 library FullMath {
     function fullMul(uint256 x, uint256 y) internal pure returns (uint256 l, uint256 h) {

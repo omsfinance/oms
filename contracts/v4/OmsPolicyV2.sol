@@ -36,6 +36,17 @@ contract OmsPolicy is Ownable {
         uint256 timestampSec
     );
 
+    struct PriceLog {
+        int256 eurPrice;
+        int256 gbpPrice;
+        int256 yenPrice;
+        int256 yuanPrice;
+        int256 averageMovement;
+        int256 referenceRate;
+    }
+
+    PriceLog[] public priceLog;
+
     Oms public uFrags;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
@@ -124,6 +135,39 @@ contract OmsPolicy is Ownable {
        returns (uint256) 
     {
        return TARGET_RATE;
+    }
+
+    function calculateReferenceRate(uint256[] prices) external onlyOrchestrator returns(uint256) {
+        require(prices.length == 4, "Invalid prices length");
+        uint256 priceLength = priceLog.length;
+        int256 eurCalcPrice = 1;
+        int256 gbpCalcPrice = 1;
+        int256 yenCalcPrice = 1;
+        int256 yuanCalcPrice = 1;
+        int256 lastReferenceRate = 1;
+        if(priceLog.length > 0) {
+            PriceLog storage pricelog = priceLog[priceLength.sub(1)];
+            eurCalcPrice = subUnderFlow(int256(prices[0]), int256(pricelog.eurPrice));
+            gbpCalcPrice = subUnderFlow(int256(prices[1]), int256(pricelog.gbpPrice));
+            yenCalcPrice = subUnderFlow(int256(prices[2]), int256(pricelog.yenPrice));
+            yuanCalcPrice = subUnderFlow(int256(prices[3]), int256(pricelog.yuanPrice));
+            lastReferenceRate = pricelog.referenceRate;
+        }
+
+        int256 sumPrice = addUnderFlow(addUnderFlow(addUnderFlow(eurCalcPrice, gbpCalcPrice), gbpCalcPrice), yuanCalcPrice);
+        int256 avgMovement = divUnderFlow(sumPrice, int256(4));
+        int256 refRate = mulUnderFlow(lastReferenceRate, addUnderFlow(int256(1), avgMovement));
+
+        priceLog.push(PriceLog({
+            eurPrice: eurCalcPrice,
+            gbpPrice: gbpCalcPrice,
+            yenPrice: yenCalcPrice,
+            yuanPrice: yuanCalcPrice,
+            averageMovement: avgMovement,
+            referenceRate: refRate
+        }));
+
+        return uint256(refRate);
     }
 
     /**
@@ -320,5 +364,55 @@ contract OmsPolicy is Ownable {
 
         return (rate >= targetRate && rate.sub(targetRate) < absoluteDeviationThreshold)
             || (rate < targetRate && targetRate.sub(rate) < absoluteDeviationThreshold);
+    }
+
+    /**
+    * @dev Subtracts two int256 variables.
+    */
+    function subUnderFlow(int256 a, int256 b)
+            internal
+            pure
+            returns (int256)
+    {
+        int256 c = a - b;
+        return c;
+    }
+
+    /**
+     * @dev Adds two int256 variables and fails on overflow.
+     */
+    function addUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        int256 c = a + b;
+        return c;
+    }
+
+    /**
+    * @dev Division of two int256 variables and fails on overflow.
+     */
+    function divUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        require(b != 0, "div overflow");
+
+        // Solidity already throws when dividing by 0.
+        return a / b;
+    }
+
+    /**
+     * @dev Multiplies two int256 variables and fails on overflow.
+     */
+    function mulUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        int256 c = a * b;
+        return c;
     }
 }

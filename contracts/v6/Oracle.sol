@@ -1,4 +1,4 @@
-pragma solidity =0.6.6;
+pragma solidity ^0.6.6;
 
 import "./library/SafeMath.sol";
 import "./interface/IUniswapV2Pair.sol";
