@@ -13,5 +13,5 @@ jobs:
       run:  npm run build
     - name: start ganache
       run: npm run dev &
-    - name: Test contracts
-      run: npm test
+    #- name: Test contracts
+    #  run: npm test
