@@ -1,4 +1,4 @@
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.12;
 
 library BitMath {
     // returns the 0 indexed position of the most significant bit of the input x

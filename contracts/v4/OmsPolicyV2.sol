@@ -1,13 +1,16 @@
 pragma solidity 0.4.24;
+pragma experimental ABIEncoderV2;
 
 import "./library/SafeMath.sol";
 import "./library/SafeMathInt.sol";
 import "./interface/IERC20.sol";
 import "./interface/IOracle.sol";
+import "./interface/IOraclePrice.sol";
 import "./interface/UInt256Lib.sol";
 import "./common/Initializable.sol";
 import "./common/Ownable.sol";
 import "./Oms.sol";
+import "./library/OraclePriceStruct.sol";
 
 /**
  * @title uOms Monetary Supply Policy
@@ -37,17 +40,19 @@ contract OmsPolicy is Ownable {
     );
 
     struct PriceLog {
-        int256 eurPrice;
-        int256 gbpPrice;
-        int256 yenPrice;
-        int256 yuanPrice;
+        int256 lastUpdatedPrice;
+    }
+
+    struct AverageLog {
         int256 averageMovement;
         int256 referenceRate;
     }
 
-    PriceLog[] public priceLog;
+    mapping (address => PriceLog) public priceLog;
+    AverageLog public averageLog;
 
     Oms public uFrags;
+    IOraclePrice public oraclePrice;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
     // (eg) An oracle value of 1.5e18 it would mean 1 Ample is trading for $1.50.
@@ -137,35 +142,33 @@ contract OmsPolicy is Ownable {
        return TARGET_RATE;
     }
 
-    function calculateReferenceRate(uint256[] prices) external onlyOrchestrator returns(uint256) {
-        require(prices.length == 4, "Invalid prices length");
-        uint256 priceLength = priceLog.length;
-        int256 eurCalcPrice = 1;
-        int256 gbpCalcPrice = 1;
-        int256 yenCalcPrice = 1;
-        int256 yuanCalcPrice = 1;
-        int256 lastReferenceRate = 1;
-        if(priceLog.length > 0) {
-            PriceLog storage pricelog = priceLog[priceLength.sub(1)];
-            eurCalcPrice = subUnderFlow(int256(prices[0]), int256(pricelog.eurPrice));
-            gbpCalcPrice = subUnderFlow(int256(prices[1]), int256(pricelog.gbpPrice));
-            yenCalcPrice = subUnderFlow(int256(prices[2]), int256(pricelog.yenPrice));
-            yuanCalcPrice = subUnderFlow(int256(prices[3]), int256(pricelog.yuanPrice));
-            lastReferenceRate = pricelog.referenceRate;
+    function calculateReferenceRate() external onlyOrchestrator returns(uint256) {
+        OraclePriceStruct.OracleInfo[] memory oracleInfo = oraclePrice.oracleInfo();
+        PriceLog storage pricelogs = priceLog[msg.sender];
+
+        int256 sumPrice = 0;
+        uint256 activeOracle = 0;
+        for(uint256 i=0; i<oracleInfo.length; i++) {
+            OraclePriceStruct.OracleInfo memory oracles = oracleInfo[i];
+            if(oracles.status == true) {
+                PriceLog storage pricelog = priceLog[oracles.oracleAddress];
+                if(pricelog.lastUpdatedPrice == 0) {
+                    pricelog.lastUpdatedPrice = 1;
+                }
+                sumPrice = addUnderFlow(sumPrice, subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice));
+                pricelog.lastUpdatedPrice = oracles.lastPrice;
+                activeOracle = activeOracle.add(1);
+            }
         }
 
-        int256 sumPrice = addUnderFlow(addUnderFlow(addUnderFlow(eurCalcPrice, gbpCalcPrice), gbpCalcPrice), yuanCalcPrice);
-        int256 avgMovement = divUnderFlow(sumPrice, int256(4));
-        int256 refRate = mulUnderFlow(lastReferenceRate, addUnderFlow(int256(1), avgMovement));
+        if(averageLog.referenceRate == 0) {
+            averageLog.referenceRate = 1;
+        }
+        int256 avgMovement = divUnderFlow(sumPrice, int256(activeOracle));
+        int256 refRate = mulUnderFlow(averageLog.referenceRate, addUnderFlow(int256(1), avgMovement));
 
-        priceLog.push(PriceLog({
-            eurPrice: eurCalcPrice,
-            gbpPrice: gbpCalcPrice,
-            yenPrice: yenCalcPrice,
-            yuanPrice: yuanCalcPrice,
-            averageMovement: avgMovement,
-            referenceRate: refRate
-        }));
+        averageLog.averageMovement = avgMovement;
+        averageLog.referenceRate = refRate;
 
         return uint256(refRate);
     }
@@ -297,7 +300,7 @@ contract OmsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, Oms uFrags_)
+    function initialize(address owner_, Oms uFrags_, address _oraclePrice)
         public
         initializer
     {
@@ -315,6 +318,7 @@ contract OmsPolicy is Ownable {
         epoch = 0;
 
         uFrags = uFrags_;
+        oraclePrice = IOraclePrice(_oraclePrice);
     }
 
     /**
