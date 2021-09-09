@@ -142,7 +142,8 @@ contract OmsPolicy is Ownable {
        return TARGET_RATE;
     }
 
-    function calculateReferenceRate() external onlyOrchestrator returns(uint256) {
+    function calculateReferenceRate() external returns(uint256) {
+        require(msg.sender == address(oraclePrice), "Only OraclePrice can call this method");
         OraclePriceStruct.OracleInfo[] memory oracleInfo = oraclePrice.oracleInfo();
         PriceLog storage pricelogs = priceLog[msg.sender];
 
