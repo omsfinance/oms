@@ -7,31 +7,25 @@ import "./interface/IOmsPolicy.sol";
 import "./interface/EACAggregatorProxy.sol";
 import "./library/SafeMath.sol";
 import "./common/Ownable.sol";
+import "./library/OraclePriceStruct.sol";
 
 contract OraclePrice is Ownable, KeeperCompatibleInterface {
     using SafeMath for uint256;
-
-    struct OracleInfo {
-        address oracleAddress;
-        bool status;
-        bytes32 symbolHash;
-        int256 lastPrice; 
-    }
     
-    OracleInfo[] public oracleInfo;
+    OraclePriceStruct.OracleInfo[] public oracleInfo;
     address public policyContract;
     uint256 public deviationThreshold;
     uint public immutable interval;
     uint public lastTimeStamp;
     uint public counter;
     
-    constructor(OracleInfo[] memory _oracles, address _policyContract, uint256 _deviationThreshold, uint _updateInterval) public {
+    constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint256 _deviationThreshold, uint _updateInterval) public {
         policyContract = _policyContract;
         deviationThreshold = _deviationThreshold;
         
         for(uint256 i=0; i<_oracles.length; i++) {
-            OracleInfo memory oracles = _oracles[i];
-            oracleInfo.push(OracleInfo({
+            OraclePriceStruct.OracleInfo memory oracles = _oracles[i];
+            oracleInfo.push(OraclePriceStruct.OracleInfo({
                 oracleAddress: oracles.oracleAddress,
                 status: oracles.status,
                 symbolHash: oracles.symbolHash,
@@ -45,7 +39,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     }
     
     function getOraclePriceInUsd(uint256 _oracleId) public view returns (int256) {
-        OracleInfo storage oracles = oracleInfo[_oracleId];
+        OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_oracleId];
         int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
         return latestPrice;
     }
@@ -67,7 +61,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     function updateTargetPrice() internal {
         uint256 length = oracleInfo.length;
         for(uint256 i=0; i<length; i++) {
-            OracleInfo storage oracles = oracleInfo[i];
+            OraclePriceStruct.OracleInfo storage oracles = oracleInfo[i];
             if(oracles.status == true) {
                 int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
                 uint8 decimals = EACAggregatorProxy(oracles.oracleAddress).decimals();
@@ -78,9 +72,9 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         }
         uint256 targetRate = IOmsPolicy(policyContract).targetPrice();
         uint256 rate  = IOmsPolicy(policyContract).calculateReferenceRate();
-        bool status = withinDeviationThreshold(rate, targetRate);
+        bool shouldUpdatePrice = withinDeviationThreshold(rate, targetRate);
         
-        if(status) {
+        if(shouldUpdatePrice) {
             IOmsPolicy(policyContract).setTargetPrice(rate);
         }
     }
@@ -95,10 +89,21 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
                 targetRate.sub(rate) < absoluteDeviationThreshold);
     }
     
-    function updateOracles(uint256 _pid, address _oracle) public onlyOwner {
-        OracleInfo storage oracles = oracleInfo[_pid];
+    function updateOracles(uint256 _pid, address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
+        OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_pid];
         require(oracles.oracleAddress != address(0), "No Oracle Found");
         oracles.oracleAddress = _oracle;
+        oracles.status = _status;
+        oracles.symbolHash = _symbolHash;
+    }
+
+    function addOracles(address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
+        oracleInfo.push(OraclePriceStruct.OracleInfo({
+                oracleAddress: _oracle,
+                status: _status,
+                symbolHash: _symbolHash,
+                lastPrice: 0
+            }));
     }
     
     function updatePolicy(address _policy) public onlyOwner {
