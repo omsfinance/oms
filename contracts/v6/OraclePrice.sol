@@ -12,11 +12,22 @@ import "./library/OraclePriceStruct.sol";
 contract OraclePrice is Ownable, KeeperCompatibleInterface {
     using SafeMath for uint256;
     
+    // Storing all the details of oracle address
     OraclePriceStruct.OracleInfo[] public oracleInfo;
+    // OmsPolicy contract address
     address public policyContract;
+
+    // If the current exchange rate is within this fractional distance from the target, no supply
+    // update is performed. Fixed point number--same format as the rate.
+    // (ie) abs(rate - targetRate) / targetRate < deviationThreshold, then no supply change.
+    // DECIMALS Fixed point number.
     uint256 public deviationThreshold;
+
+    // More than this much time must pass between keepers operations.
     uint public immutable interval;
+    // Block timestamp of last Keepers operations.
     uint public lastTimeStamp;
+    // The number of keepers cycles since inception
     uint public counter;
     
     constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint256 _deviationThreshold, uint _updateInterval) public {
@@ -34,10 +45,18 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         }
 
         interval = _updateInterval;
-        lastTimeStamp = block.timestamp;
+        lastTimeStamp = 0;
         counter = 0;
     }
+
+    function getOracleInfoCount() public view returns (uint256) {
+        return oracleInfo.length;
+    }
     
+    /**
+     * @param _oracleId index number of oracle address.
+     * Fetching updated price of perticular oracles from chainlink. 
+     */
     function getOraclePriceInUsd(uint256 _oracleId) public view returns (int256) {
         OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_oracleId];
         int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
@@ -58,6 +77,10 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         updateTargetPrice();
     }
     
+    /**
+     * Fetching updated price from all oracles and calculating ref rate to update 
+     * Target price.
+     */
     function updateTargetPrice() internal {
         uint256 length = oracleInfo.length;
         for(uint256 i=0; i<length; i++) {
@@ -79,6 +102,12 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         }
     }
     
+    /**
+     * @param rate The current exchange rate, an 18 decimal fixed point number.
+     * @param targetRate The target exchange rate, an 18 decimal fixed point number.
+     * @return If the rate is within the deviation threshold from the target rate, returns true.
+     *         Otherwise, returns false.
+     */
     function withinDeviationThreshold(uint256 rate, uint256 targetRate) private view returns (bool) {
         uint256 absoluteDeviationThreshold = targetRate.mul(deviationThreshold).div(10**18);
 
@@ -89,6 +118,12 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
                 targetRate.sub(rate) < absoluteDeviationThreshold);
     }
     
+    /**
+     * @param _pid index number of oracle address.
+     * @param _oracle updated oracle address.
+     * @param _status true if oracle is active otherwise inactive.
+     * @param _symbolHash symbolHash of crypto currency.
+     */
     function updateOracles(uint256 _pid, address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
         OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_pid];
         require(oracles.oracleAddress != address(0), "No Oracle Found");
@@ -97,6 +132,11 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         oracles.symbolHash = _symbolHash;
     }
 
+    /**
+     * @param _oracle new oracle address to add in structure.
+     * @param _status true if oracle is active otherwise inactive.
+     * @param _symbolHash symbolHash of crypto currency.
+     */
     function addOracles(address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
         oracleInfo.push(OraclePriceStruct.OracleInfo({
                 oracleAddress: _oracle,
@@ -106,10 +146,19 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
             }));
     }
     
+    /**
+     * @param _policy new policy address.
+     */
     function updatePolicy(address _policy) public onlyOwner {
         policyContract = _policy;
     }
     
+    /**
+     * @notice Sets the deviation threshold fraction. If the exchange rate given by the market
+     *         oracle is within this fractional distance from the targetRate, then no supply
+     *         modifications are made. DECIMALS fixed point number.
+     * @param deviationThreshold_ The new exchange rate threshold fraction.
+     */
     function setDeviationThreshold(uint256 deviationThreshold_) external onlyOwner {
         deviationThreshold = deviationThreshold_;
     }

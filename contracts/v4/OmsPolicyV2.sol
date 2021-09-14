@@ -12,6 +12,9 @@ import "./common/Ownable.sol";
 import "./Oms.sol";
 import "./library/OraclePriceStruct.sol";
 
+// File: contracts/v4/OmsPolicy.sol
+pragma solidity 0.4.24;
+
 /**
  * @title uOms Monetary Supply Policy
  * @dev This is an implementation of the uOms Ideal Money protocol.
@@ -48,10 +51,13 @@ contract OmsPolicy is Ownable {
         int256 referenceRate;
     }
 
+    // PriceLog represents last price of each currency
     mapping (address => PriceLog) public priceLog;
+    // AverageLog represents last average and ref rate of currency
     AverageLog public averageLog;
 
     Oms public uFrags;
+    // Address of oraclePrice contract
     IOraclePrice public oraclePrice;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
@@ -120,8 +126,8 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(admins[_admin] != true, "already admin role");
-        admins[_admin] == _status;
+        require(admins[_admin] != _status, "already admin role");
+        admins[_admin] = _status;
     }
 
     // set target price
@@ -133,7 +139,16 @@ contract OmsPolicy is Ownable {
         TARGET_RATE = _targetPrice;
         emit LogTargetPrice(lastTargetPrice, TARGET_RATE, block.timestamp);
     }
+    
+    // set oracle price address
+    function setOraclePriceAddress(address _oraclePrice)
+        external
+        onlyAdmin
+    {
+        oraclePrice = IOraclePrice(_oraclePrice);
+    }
 
+    // return current target price
     function targetPrice() 
        external 
        view 
@@ -142,31 +157,33 @@ contract OmsPolicy is Ownable {
        return TARGET_RATE;
     }
 
-    function calculateReferenceRate() external returns(uint256) {
+    // calculate average movement and ReferenceRate from all currency price 
+    function calculateReferenceRate() external onlyAdmin returns(uint256) {
         require(msg.sender == address(oraclePrice), "Only OraclePrice can call this method");
-        OraclePriceStruct.OracleInfo[] memory oracleInfo = oraclePrice.oracleInfo();
-        PriceLog storage pricelogs = priceLog[msg.sender];
-
+        uint256 oracleInfoCount = oraclePrice.getOracleInfoCount();
+        
         int256 sumPrice = 0;
+        int256 decimals = 1e18;
         uint256 activeOracle = 0;
-        for(uint256 i=0; i<oracleInfo.length; i++) {
-            OraclePriceStruct.OracleInfo memory oracles = oracleInfo[i];
+        for(uint256 i=0; i<oracleInfoCount; i++) {
+            OraclePriceStruct.OracleInfo memory oracles = oraclePrice.oracleInfo(i);
             if(oracles.status == true) {
                 PriceLog storage pricelog = priceLog[oracles.oracleAddress];
+                PriceLog storage pricelogs = priceLog[oracles.oracleAddress];
+                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracles.lastPrice));
                 if(pricelog.lastUpdatedPrice == 0) {
-                    pricelog.lastUpdatedPrice = 1;
+                    sumPrice = 0;
                 }
-                sumPrice = addUnderFlow(sumPrice, subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice));
                 pricelog.lastUpdatedPrice = oracles.lastPrice;
                 activeOracle = activeOracle.add(1);
             }
         }
 
-        if(averageLog.referenceRate == 0) {
-            averageLog.referenceRate = 1;
-        }
         int256 avgMovement = divUnderFlow(sumPrice, int256(activeOracle));
-        int256 refRate = mulUnderFlow(averageLog.referenceRate, addUnderFlow(int256(1), avgMovement));
+        if(averageLog.referenceRate == 0) {
+            averageLog.referenceRate = decimals;
+        }
+        int256 refRate = divUnderFlow(mulUnderFlow(averageLog.referenceRate, addUnderFlow(decimals, divUnderFlow(mulUnderFlow(decimals, avgMovement), 10000000))), decimals);
 
         averageLog.averageMovement = avgMovement;
         averageLog.referenceRate = refRate;
@@ -301,7 +318,7 @@ contract OmsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, Oms uFrags_, address _oraclePrice)
+    function initialize(address owner_, Oms uFrags_)
         public
         initializer
     {
@@ -319,7 +336,6 @@ contract OmsPolicy is Ownable {
         epoch = 0;
 
         uFrags = uFrags_;
-        oraclePrice = IOraclePrice(_oraclePrice);
     }
 
     /**
