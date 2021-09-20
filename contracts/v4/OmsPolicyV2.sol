@@ -112,7 +112,7 @@ contract OmsPolicy is Ownable {
     address public orchestrator;
 
     modifier onlyOrchestrator() {
-        require(msg.sender == orchestrator);
+        require(msg.sender == orchestrator, 'Only Orchestrator can call this function');
         _;
     }
 
@@ -199,10 +199,10 @@ contract OmsPolicy is Ownable {
      *      and targetRate is 1
      */
     function rebase() external onlyOrchestrator {
-        require(inRebaseWindow());
+        require(inRebaseWindow(), 'Must be in the rebase window');
 
         // This comparison also ensures there is no reentrancy.
-        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now);
+        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now, 'Not allowed to rebase so soon since the last rebase');
 
         // Snap the rebase time to the start of this window.
         lastRebaseTimestampSec = now.sub(
@@ -215,7 +215,7 @@ contract OmsPolicy is Ownable {
         uint256 exchangeRate;
         bool rateValid;
         (exchangeRate, rateValid) = marketOracle.getData();
-        require(rateValid);
+        require(rateValid, 'Rate is not valid');
 
         if (exchangeRate > MAX_RATE) {
             exchangeRate = MAX_RATE;
@@ -243,6 +243,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(marketOracle_ != address(0), 'The address can not be a zero-address');
         marketOracle = marketOracle_;
     }
 
@@ -254,6 +255,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
+        require(orchestrator_ != address(0), 'The address can not be a zero-address');
         orchestrator = orchestrator_;
     }
 
@@ -282,7 +284,7 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(rebaseLag_ > 0);
+        require(rebaseLag_ > 0, 'Rebase lag must be greater than 0');
         rebaseLag = rebaseLag_;
     }
 
@@ -305,8 +307,8 @@ contract OmsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(minRebaseTimeIntervalSec_ > 0);
-        require(rebaseWindowOffsetSec_ < minRebaseTimeIntervalSec_);
+        require(minRebaseTimeIntervalSec_ > 0, 'Min rebase time interval must be greater than 0');
+        require(rebaseWindowOffsetSec_ < minRebaseTimeIntervalSec_, 'Rebase window offset must be less than min rebase time interval');
 
         minRebaseTimeIntervalSec = minRebaseTimeIntervalSec_;
         rebaseWindowOffsetSec = rebaseWindowOffsetSec_;
@@ -322,6 +324,7 @@ contract OmsPolicy is Ownable {
         public
         initializer
     {
+        require(owner_ != address(0), 'The address can not be a zero-address');
         Ownable.initialize(owner_);
 
         // deviationThreshold = 0.05e18 = 5e16
