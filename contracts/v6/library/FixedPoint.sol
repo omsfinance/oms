@@ -1,4 +1,4 @@
-pragma solidity ^0.6.12;
+pragma solidity =0.6.12;
 
 import "./BitMath.sol";
 import "./FullMath.sol";
