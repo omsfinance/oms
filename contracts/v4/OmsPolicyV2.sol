@@ -12,18 +12,6 @@ import "./common/Ownable.sol";
 import "./Oms.sol";
 import "./library/OraclePriceStruct.sol";
 
-// File: contracts/v4/OmsPolicy.sol
-pragma solidity 0.4.24;
-
-/**
- * @title uOms Monetary Supply Policy
- * @dev This is an implementation of the uOms Ideal Money protocol.
- *      uOms operates symmetrically on expansion and contraction. It will both split and
- *      combine coins to maintain a stable unit price.
- *
- *      This component regulates the token supply of the uOms ERC20 token in response to
- *      market oracles.
- */
 contract OmsPolicy is Ownable {
     using SafeMath for uint256;
     using SafeMathInt for int256;
@@ -56,12 +44,12 @@ contract OmsPolicy is Ownable {
     // AverageLog represents last average and ref rate of currency
     AverageLog public averageLog;
 
-    Oms public uFrags;
+    Oms public oms;
     // Address of oraclePrice contract
     IOraclePrice public oraclePrice;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
-    // (eg) An oracle value of 1.5e18 it would mean 1 Ample is trading for $1.50.
+    // (eg) An oracle value of 1.5e18 it would mean 1 Oms is trading for $1.50.
     IOracle public marketOracle;
 
     // If the current exchange rate is within this fractional distance from the target, no supply
@@ -100,7 +88,7 @@ contract OmsPolicy is Ownable {
     uint256 private constant MAX_SUPPLY = ~(uint256(1) << 255) / MAX_RATE;
 
     // target rate 1
-    uint256 private TARGET_RATE = 1 * 10**DECIMALS;
+    uint256 private constant TARGET_RATE = 1 * 10**DECIMALS;
 
     // last target price
     uint256 public lastTargetPrice = 1 * 10**DECIMALS;
@@ -226,11 +214,14 @@ contract OmsPolicy is Ownable {
         // Apply the Dampening factor.
         supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
 
-        if (supplyDelta > 0 && uFrags.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
-            supplyDelta = (MAX_SUPPLY.sub(uFrags.totalSupply())).toInt256Safe();
+        if (supplyDelta > 0 && oms.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
+            supplyDelta = (MAX_SUPPLY.sub(oms.totalSupply())).toInt256Safe();
         }
 
-        uint256 supplyAfterRebase = uFrags.rebase(epoch, supplyDelta);
+        uint256 supplyAfterRebase = oms.rebase(epoch, supplyDelta);
+
+        marketOracle.sync();
+
         assert(supplyAfterRebase <= MAX_SUPPLY);
         emit LogRebase(epoch, exchangeRate, supplyDelta, now);
     }
@@ -320,7 +311,7 @@ contract OmsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, Oms uFrags_)
+    function initialize(address owner_, Oms oms_)
         public
         initializer
     {
@@ -335,10 +326,8 @@ contract OmsPolicy is Ownable {
         minRebaseTimeIntervalSec = 1 days;
         rebaseWindowOffsetSec = 39600;  // 11AM UTC
         rebaseWindowLengthSec = 30 minutes;
-        lastRebaseTimestampSec = 0;
-        epoch = 0;
 
-        uFrags = uFrags_;
+        oms = oms_;
     }
 
     /**
@@ -367,7 +356,7 @@ contract OmsPolicy is Ownable {
 
         // supplyDelta = totalSupply * (rate - targetRate) / targetRate
         int256 targetRateSigned = targetRate.toInt256Safe();
-        return uFrags.totalSupply().toInt256Safe()
+        return oms.totalSupply().toInt256Safe()
             .mul(rate.toInt256Safe().sub(targetRateSigned))
             .div(targetRateSigned);
     }
