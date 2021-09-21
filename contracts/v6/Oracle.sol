@@ -21,7 +21,7 @@ contract Oracle {
     IUniswapV2Pair immutable pair;
     address public immutable token0;
     address public immutable token1;
-    address internal usdc = 0xe22da380ee6B445bb8273C81944ADEB6E8450422;
+    address internal usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     uint    public price0CumulativeLast;
     uint    public price1CumulativeLast;
