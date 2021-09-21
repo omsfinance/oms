@@ -88,7 +88,7 @@ contract OmsPolicy is Ownable {
     uint256 private constant MAX_SUPPLY = ~(uint256(1) << 255) / MAX_RATE;
 
     // target rate 1
-    uint256 private constant TARGET_RATE = 1 * 10**DECIMALS;
+    uint256 private TARGET_RATE = 1 * 10**DECIMALS;
 
     // last target price
     uint256 public lastTargetPrice = 1 * 10**DECIMALS;
