@@ -1,5 +1,5 @@
 {
-  "name": "tutorialtoken",
+  "name": "oms",
   "version": "1.0.0",
   "description": "",
   "main": "truffle.js",
@@ -7,8 +7,10 @@
     "test": "test"
   },
   "scripts": {
-    "dev": "lite-server",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ganache-cli",
+    "start": "truffle develop",
+    "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
+    "test": "truffle test --show-events --config=contracts/v4/config.js && truffle test --show-events --config=contracts/v6/config.js",
     "run95": "eth95 ./build/contracts"
   },
   "author": "",
@@ -18,6 +20,8 @@
     "zos-lib": "^2.2.2"
   },
   "dependencies": {
+    "truffle": "5.2.3",
+    "ganache-cli": "6.12.2",
     "bignumber.js": "^9.0.1",
     "chai": "^4.1.2",
     "chai-bignumber": "^2.0.2",
