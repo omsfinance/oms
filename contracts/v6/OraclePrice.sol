@@ -11,9 +11,19 @@ import "./library/OraclePriceStruct.sol";
 
 contract OraclePrice is Ownable, KeeperCompatibleInterface {
     using SafeMath for uint256;
+
+    struct PriceLog {
+        int256 lastUpdatedPrice;
+    }
+
+    struct AverageLog {
+        int256 averageMovement;
+        int256 referenceRate;
+    }
     
     // Storing all the details of oracle address
     OraclePriceStruct.OracleInfo[] public oracleInfo;
+    
     // OmsPolicy contract address
     address public policyContract;
 
@@ -25,11 +35,19 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
 
     // More than this much time must pass between keepers operations.
     uint public immutable interval;
+
     // Block timestamp of last Keepers operations.
     uint public lastTimeStamp;
+    
     // The number of keepers cycles since inception
     uint public counter;
     
+    // PriceLog represents last price of each currency
+    mapping (address => PriceLog) public priceLog;
+
+    // AverageLog represents last average and ref rate of currency
+    AverageLog public averageLog;
+
     constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint256 _deviationThreshold, uint _updateInterval) public {
         policyContract = _policyContract;
         deviationThreshold = _deviationThreshold;
@@ -76,6 +94,39 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
 
         updateTargetPrice();
     }
+
+    // calculate average movement and ReferenceRate from all currency price 
+    function calculateReferenceRate() internal returns(uint256) {
+        uint256 oracleInfoCount = oracleInfo.length;
+        
+        int256 sumPrice = 0;
+        int256 decimals = 1e18;
+        uint256 activeOracle = 0;
+        for(uint256 i=0; i<oracleInfoCount; i++) {
+            OraclePriceStruct.OracleInfo storage oracles = oracleInfo[i];
+            if(oracles.isActive == true) {
+                PriceLog storage pricelog = priceLog[oracles.oracleAddress];
+                PriceLog storage pricelogs = priceLog[oracles.oracleAddress];
+                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracles.lastPrice));
+                if(pricelog.lastUpdatedPrice == 0) {
+                    sumPrice = 0;
+                }
+                pricelog.lastUpdatedPrice = oracles.lastPrice;
+                activeOracle = activeOracle.add(1);
+            }
+        }
+
+        int256 avgMovement = divUnderFlow(sumPrice, int256(activeOracle));
+        if(averageLog.referenceRate == 0) {
+            averageLog.referenceRate = decimals;
+        }
+        int256 refRate = divUnderFlow(mulUnderFlow(averageLog.referenceRate, addUnderFlow(decimals, divUnderFlow(mulUnderFlow(decimals, avgMovement), 10000000))), decimals);
+
+        averageLog.averageMovement = avgMovement;
+        averageLog.referenceRate = refRate;
+
+        return uint256(refRate);
+    }
     
     /**
      * Fetching updated price from all oracles and calculating ref rate to update 
@@ -94,7 +145,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
             }
         }
         uint256 targetRate = IOmsPolicy(policyContract).targetPrice();
-        uint256 rate  = IOmsPolicy(policyContract).calculateReferenceRate();
+        uint256 rate  = calculateReferenceRate();
         bool shouldUpdatePrice = withinDeviationThreshold(rate, targetRate);
         
         if(shouldUpdatePrice) {
@@ -161,5 +212,55 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      */
     function setDeviationThreshold(uint256 deviationThreshold_) external onlyOwner {
         deviationThreshold = deviationThreshold_;
+    }
+
+    /**
+    * @dev Subtracts two int256 variables.
+    */
+    function subUnderFlow(int256 a, int256 b)
+            internal
+            pure
+            returns (int256)
+    {
+        int256 c = a - b;
+        return c;
+    }
+
+    /**
+     * @dev Adds two int256 variables and fails on overflow.
+     */
+    function addUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        int256 c = a + b;
+        return c;
+    }
+
+    /**
+    * @dev Division of two int256 variables and fails on overflow.
+     */
+    function divUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        require(b != 0, "div overflow");
+
+        // Solidity already throws when dividing by 0.
+        return a / b;
+    }
+
+    /**
+     * @dev Multiplies two int256 variables and fails on overflow.
+     */
+    function mulUnderFlow(int256 a, int256 b)
+        internal
+        pure
+        returns (int256)
+    {
+        int256 c = a * b;
+        return c;
     }
 }

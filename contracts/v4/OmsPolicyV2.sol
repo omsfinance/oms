@@ -5,12 +5,10 @@ import "./library/SafeMath.sol";
 import "./library/SafeMathInt.sol";
 import "./interface/IERC20.sol";
 import "./interface/IOracle.sol";
-import "./interface/IOraclePrice.sol";
 import "./interface/UInt256Lib.sol";
 import "./common/Initializable.sol";
 import "./common/Ownable.sol";
 import "./Oms.sol";
-import "./library/OraclePriceStruct.sol";
 
 contract OmsPolicy is Ownable {
     using SafeMath for uint256;
@@ -30,23 +28,7 @@ contract OmsPolicy is Ownable {
         uint256 timestampSec
     );
 
-    struct PriceLog {
-        int256 lastUpdatedPrice;
-    }
-
-    struct AverageLog {
-        int256 averageMovement;
-        int256 referenceRate;
-    }
-
-    // PriceLog represents last price of each currency
-    mapping (address => PriceLog) public priceLog;
-    // AverageLog represents last average and ref rate of currency
-    AverageLog public averageLog;
-
     Oms public oms;
-    // Address of oraclePrice contract
-    IOraclePrice public oraclePrice;
 
     // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
     // (eg) An oracle value of 1.5e18 it would mean 1 Oms is trading for $1.50.
@@ -128,14 +110,6 @@ contract OmsPolicy is Ownable {
         TARGET_RATE = _targetPrice;
         emit LogTargetPrice(lastTargetPrice, TARGET_RATE, block.timestamp);
     }
-    
-    // set oracle price address
-    function setOraclePriceAddress(address _oraclePrice)
-        external
-        onlyAdmin
-    {
-        oraclePrice = IOraclePrice(_oraclePrice);
-    }
 
     // return current target price
     function targetPrice() 
@@ -144,40 +118,6 @@ contract OmsPolicy is Ownable {
        returns (uint256) 
     {
        return TARGET_RATE;
-    }
-
-    // calculate average movement and ReferenceRate from all currency price 
-    function calculateReferenceRate() external onlyAdmin returns(uint256) {
-        require(msg.sender == address(oraclePrice), "Only OraclePrice can call this method");
-        uint256 oracleInfoCount = oraclePrice.getOracleInfoCount();
-        
-        int256 sumPrice = 0;
-        int256 decimals = 1e18;
-        uint256 activeOracle = 0;
-        for(uint256 i=0; i<oracleInfoCount; i++) {
-            OraclePriceStruct.OracleInfo memory oracles = oraclePrice.oracleInfo(i);
-            if(oracles.isActive == true) {
-                PriceLog storage pricelog = priceLog[oracles.oracleAddress];
-                PriceLog storage pricelogs = priceLog[oracles.oracleAddress];
-                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracles.lastPrice));
-                if(pricelog.lastUpdatedPrice == 0) {
-                    sumPrice = 0;
-                }
-                pricelog.lastUpdatedPrice = oracles.lastPrice;
-                activeOracle = activeOracle.add(1);
-            }
-        }
-
-        int256 avgMovement = divUnderFlow(sumPrice, int256(activeOracle));
-        if(averageLog.referenceRate == 0) {
-            averageLog.referenceRate = decimals;
-        }
-        int256 refRate = divUnderFlow(mulUnderFlow(averageLog.referenceRate, addUnderFlow(decimals, divUnderFlow(mulUnderFlow(decimals, avgMovement), 10000000))), decimals);
-
-        averageLog.averageMovement = avgMovement;
-        averageLog.referenceRate = refRate;
-
-        return uint256(refRate);
     }
 
     /**
@@ -378,55 +318,5 @@ contract OmsPolicy is Ownable {
 
         return (rate >= targetRate && rate.sub(targetRate) < absoluteDeviationThreshold)
             || (rate < targetRate && targetRate.sub(rate) < absoluteDeviationThreshold);
-    }
-
-    /**
-    * @dev Subtracts two int256 variables.
-    */
-    function subUnderFlow(int256 a, int256 b)
-            internal
-            pure
-            returns (int256)
-    {
-        int256 c = a - b;
-        return c;
-    }
-
-    /**
-     * @dev Adds two int256 variables and fails on overflow.
-     */
-    function addUnderFlow(int256 a, int256 b)
-        internal
-        pure
-        returns (int256)
-    {
-        int256 c = a + b;
-        return c;
-    }
-
-    /**
-    * @dev Division of two int256 variables and fails on overflow.
-     */
-    function divUnderFlow(int256 a, int256 b)
-        internal
-        pure
-        returns (int256)
-    {
-        require(b != 0, "div overflow");
-
-        // Solidity already throws when dividing by 0.
-        return a / b;
-    }
-
-    /**
-     * @dev Multiplies two int256 variables and fails on overflow.
-     */
-    function mulUnderFlow(int256 a, int256 b)
-        internal
-        pure
-        returns (int256)
-    {
-        int256 c = a * b;
-        return c;
     }
 }
