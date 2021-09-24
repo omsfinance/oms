@@ -38,7 +38,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
             OraclePriceStruct.OracleInfo memory oracles = _oracles[i];
             oracleInfo.push(OraclePriceStruct.OracleInfo({
                 oracleAddress: oracles.oracleAddress,
-                status: oracles.status,
+                isActive: oracles.isActive,
                 symbolHash: oracles.symbolHash,
                 lastPrice: 0
             }));
@@ -85,7 +85,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         uint256 length = oracleInfo.length;
         for(uint256 i=0; i<length; i++) {
             OraclePriceStruct.OracleInfo storage oracles = oracleInfo[i];
-            if(oracles.status == true) {
+            if(oracles.isActive == true) {
                 int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
                 uint8 decimals = EACAggregatorProxy(oracles.oracleAddress).decimals();
                 uint256 restDec = SafeMath.sub(18, uint256(decimals));
@@ -121,26 +121,26 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     /**
      * @param _pid index number of oracle address.
      * @param _oracle updated oracle address.
-     * @param _status true if oracle is active otherwise inactive.
+     * @param _isActive true if oracle is active otherwise inactive.
      * @param _symbolHash symbolHash of crypto currency.
      */
-    function updateOracles(uint256 _pid, address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
+    function updateOracles(uint256 _pid, address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
         OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_pid];
         require(oracles.oracleAddress != address(0), "No Oracle Found");
         oracles.oracleAddress = _oracle;
-        oracles.status = _status;
+        oracles.isActive = _isActive;
         oracles.symbolHash = _symbolHash;
     }
 
     /**
      * @param _oracle new oracle address to add in structure.
-     * @param _status true if oracle is active otherwise inactive.
+     * @param _isActive true if oracle is active otherwise inactive.
      * @param _symbolHash symbolHash of crypto currency.
      */
-    function addOracles(address _oracle, bool _status, bytes32 _symbolHash) public onlyOwner {
+    function addOracles(address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
         oracleInfo.push(OraclePriceStruct.OracleInfo({
                 oracleAddress: _oracle,
-                status: _status,
+                isActive: _isActive,
                 symbolHash: _symbolHash,
                 lastPrice: 0
             }));
