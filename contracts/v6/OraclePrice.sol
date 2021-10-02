@@ -7,7 +7,6 @@ import "./interface/IOmsPolicy.sol";
 import "./interface/EACAggregatorProxy.sol";
 import "./library/SafeMath.sol";
 import "./common/Ownable.sol";
-import "./library/OraclePriceStruct.sol";
 
 contract OraclePrice is Ownable, KeeperCompatibleInterface {
     using SafeMath for uint256;
@@ -20,9 +19,16 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         int256 averageMovement;
         int256 referenceRate;
     }
+
+    struct OracleInfo {
+        address oracleAddress;
+        bool isActive;
+        bytes32 symbolHash;
+        int256 lastPrice; 
+    }
     
     // Storing all the details of oracle address
-    OraclePriceStruct.OracleInfo[] public oracleInfo;
+    OracleInfo[] public oracleInfo;
 
     // OmsPolicy contract address
     address public policyContract;
@@ -42,12 +48,12 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     // AverageLog represents last average and ref rate of currency
     AverageLog public averageLog;
     
-    constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint _updateInterval) public {
+    constructor(OracleInfo[] memory _oracles, address _policyContract, uint _updateInterval) public {
         policyContract = _policyContract;
         
         for(uint256 i=0; i<_oracles.length; i++) {
-            OraclePriceStruct.OracleInfo memory oracles = _oracles[i];
-            oracleInfo.push(OraclePriceStruct.OracleInfo({
+            OracleInfo memory oracles = _oracles[i];
+            oracleInfo.push(OracleInfo({
                 oracleAddress: oracles.oracleAddress,
                 isActive: oracles.isActive,
                 symbolHash: oracles.symbolHash,
@@ -69,7 +75,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * Fetching updated price of perticular oracles from chainlink. 
      */
     function getOraclePriceInUsd(uint256 _oracleId) public view returns (int256) {
-        OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_oracleId];
+        OracleInfo storage oracles = oracleInfo[_oracleId];
         int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
         return latestPrice;
     }
@@ -96,7 +102,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         int256 decimals = 1e18;
         uint256 activeOracle = 0;
         for(uint256 i=0; i<oracleInfoCount; i++) {
-            OraclePriceStruct.OracleInfo storage oracles = oracleInfo[i];
+            OracleInfo storage oracles = oracleInfo[i];
             if(oracles.isActive == true) {
                 PriceLog storage pricelog = priceLog[oracles.oracleAddress];
                 PriceLog storage pricelogs = priceLog[oracles.oracleAddress];
@@ -128,7 +134,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     function updateTargetPrice() internal {
         uint256 length = oracleInfo.length;
         for(uint256 i=0; i<length; i++) {
-            OraclePriceStruct.OracleInfo storage oracles = oracleInfo[i];
+            OracleInfo storage oracles = oracleInfo[i];
             if(oracles.isActive == true) {
                 int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
                 uint8 decimals = EACAggregatorProxy(oracles.oracleAddress).decimals();
@@ -150,7 +156,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * @param _symbolHash symbolHash of crypto currency.
      */
     function updateOracles(uint256 _pid, address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
-        OraclePriceStruct.OracleInfo storage oracles = oracleInfo[_pid];
+        OracleInfo storage oracles = oracleInfo[_pid];
         require(oracles.oracleAddress != address(0), "No Oracle Found");
         oracles.oracleAddress = _oracle;
         oracles.isActive = _isActive;
@@ -163,7 +169,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * @param _symbolHash symbolHash of crypto currency.
      */
     function addOracles(address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
-        oracleInfo.push(OraclePriceStruct.OracleInfo({
+        oracleInfo.push(OracleInfo({
                 oracleAddress: _oracle,
                 isActive: _isActive,
                 symbolHash: _symbolHash,
