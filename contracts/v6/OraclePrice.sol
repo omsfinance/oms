@@ -27,12 +27,6 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     // OmsPolicy contract address
     address public policyContract;
 
-    // If the current exchange rate is within this fractional distance from the target, no supply
-    // update is performed. Fixed point number--same format as the rate.
-    // (ie) abs(rate - targetRate) / targetRate < deviationThreshold, then no supply change.
-    // DECIMALS Fixed point number.
-    uint256 public deviationThreshold;
-
     // More than this much time must pass between keepers operations.
     uint public immutable interval;
 
@@ -48,9 +42,8 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     // AverageLog represents last average and ref rate of currency
     AverageLog public averageLog;
     
-    constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint256 _deviationThreshold, uint _updateInterval) public {
+    constructor(OraclePriceStruct.OracleInfo[] memory _oracles, address _policyContract, uint _updateInterval) public {
         policyContract = _policyContract;
-        deviationThreshold = _deviationThreshold;
         
         for(uint256 i=0; i<_oracles.length; i++) {
             OraclePriceStruct.OracleInfo memory oracles = _oracles[i];
@@ -144,29 +137,10 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
                 oracles.lastPrice = latestPrice;
             }
         }
-        uint256 targetRate = IOmsPolicy(policyContract).targetPrice();
-        uint256 rate  = calculateReferenceRate();
-        bool shouldUpdatePrice = withinDeviationThreshold(rate, targetRate);
-        
-        if(shouldUpdatePrice) {
-            IOmsPolicy(policyContract).setTargetPrice(rate);
-        }
-    }
     
-    /**
-     * @param rate The current exchange rate, an 18 decimal fixed point number.
-     * @param targetRate The target exchange rate, an 18 decimal fixed point number.
-     * @return If the rate is within the deviation threshold from the target rate, returns true.
-     *         Otherwise, returns false.
-     */
-    function withinDeviationThreshold(uint256 rate, uint256 targetRate) private view returns (bool) {
-        uint256 absoluteDeviationThreshold = targetRate.mul(deviationThreshold).div(10**18);
-
-        return
-            (rate >= targetRate &&
-                rate.sub(targetRate) < absoluteDeviationThreshold) ||
-            (rate < targetRate &&
-                targetRate.sub(rate) < absoluteDeviationThreshold);
+        uint256 rate  = calculateReferenceRate();
+        
+        IOmsPolicy(policyContract).setTargetPrice(rate);
     }
     
     /**
@@ -202,16 +176,6 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      */
     function updatePolicy(address _policy) public onlyOwner {
         policyContract = _policy;
-    }
-    
-    /**
-     * @notice Sets the deviation threshold fraction. If the exchange rate given by the market
-     *         oracle is within this fractional distance from the targetRate, then no supply
-     *         modifications are made. DECIMALS fixed point number.
-     * @param deviationThreshold_ The new exchange rate threshold fraction.
-     */
-    function setDeviationThreshold(uint256 deviationThreshold_) external onlyOwner {
-        deviationThreshold = deviationThreshold_;
     }
 
     /**
