@@ -27,6 +27,9 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         int256 lastPrice; 
     }
     
+    event LogTargetPriceUpdated(uint256 indexed performUpkeepCycle, uint256 timestampSec, int256 averageMovement, uint256 oldReferenceRate, uint256 newReferenceRate);
+    event LogReferenceRateDataUsed(uint256 indexed performUpkeepCycle, uint256 timestampSec, address oracleAddress, int256 oldPrice, int256 newPrice);
+
     // Storing all the details of oracle address
     OracleInfo[] public oracleInfo;
 
@@ -110,6 +113,9 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
                 if(pricelog.lastUpdatedPrice == 0) {
                     sumPrice = 0;
                 }
+
+                emit LogReferenceRateDataUsed(counter, lastTimeStamp, oracles.oracleAddress, pricelog.lastUpdatedPrice, oracles.lastPrice);
+                
                 pricelog.lastUpdatedPrice = oracles.lastPrice;
                 activeOracle = activeOracle.add(1);
             }
@@ -144,9 +150,12 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
             }
         }
     
-        uint256 rate  = calculateReferenceRate();
+        uint256 oldTargetPrice = IOmsPolicy(policyContract).targetPrice();
+        uint256 newTargetPrice = calculateReferenceRate();
+
+        IOmsPolicy(policyContract).setTargetPrice(newTargetPrice);
         
-        IOmsPolicy(policyContract).setTargetPrice(rate);
+        emit LogTargetPriceUpdated(counter, lastTimeStamp, averageLog.averageMovement, oldTargetPrice, newTargetPrice);
     }
     
     /**
