@@ -17,6 +17,7 @@ contract OmsPolicy is Ownable {
 
     event LogRebase(
         uint256 indexed epoch,
+        uint256 targetRate,
         uint256 exchangeRate,
         int256 requestedSupplyAdjustment,
         uint256 timestampSec
@@ -164,7 +165,7 @@ contract OmsPolicy is Ownable {
         marketOracle.sync();
 
         assert(supplyAfterRebase <= MAX_SUPPLY);
-        emit LogRebase(epoch, exchangeRate, supplyDelta, now);
+        emit LogRebase(epoch, targetRate, exchangeRate, supplyDelta, now);
     }
 
     /**
