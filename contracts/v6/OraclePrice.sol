@@ -55,11 +55,11 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         policyContract = _policyContract;
         
         for(uint256 i=0; i<_oracles.length; i++) {
-            OracleInfo memory oracles = _oracles[i];
+            OracleInfo memory oracle = _oracles[i];
             oracleInfo.push(OracleInfo({
-                oracleAddress: oracles.oracleAddress,
-                isActive: oracles.isActive,
-                symbolHash: oracles.symbolHash,
+                oracleAddress: oracle.oracleAddress,
+                isActive: oracle.isActive,
+                symbolHash: oracle.symbolHash,
                 lastPrice: 0
             }));
         }
@@ -78,8 +78,8 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * Fetching updated price of perticular oracles from chainlink. 
      */
     function getOraclePriceInUsd(uint256 _oracleId) public view returns (int256) {
-        OracleInfo storage oracles = oracleInfo[_oracleId];
-        int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
+        OracleInfo storage oracle = oracleInfo[_oracleId];
+        int256 latestPrice = EACAggregatorProxy(oracle.oracleAddress).latestAnswer();
         return latestPrice;
     }
 
@@ -105,18 +105,18 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         int256 decimals = 1e18;
         uint256 activeOracle = 0;
         for(uint256 i=0; i<oracleInfoCount; i++) {
-            OracleInfo storage oracles = oracleInfo[i];
-            if(oracles.isActive == true) {
-                PriceLog storage pricelog = priceLog[oracles.oracleAddress];
-                PriceLog storage pricelogs = priceLog[oracles.oracleAddress];
-                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracles.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracles.lastPrice));
+            OracleInfo storage oracle = oracleInfo[i];
+            if(oracle.isActive == true) {
+                PriceLog storage pricelog = priceLog[oracle.oracleAddress];
+                PriceLog storage pricelogs = priceLog[oracle.oracleAddress];
+                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracle.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracle.lastPrice));
                 if(pricelog.lastUpdatedPrice == 0) {
                     sumPrice = 0;
                 }
 
-                emit LogReferenceRateDataUsed(counter, lastTimeStamp, oracles.oracleAddress, pricelog.lastUpdatedPrice, oracles.lastPrice);
+                emit LogReferenceRateDataUsed(counter, lastTimeStamp, oracle.oracleAddress, pricelog.lastUpdatedPrice, oracle.lastPrice);
                 
-                pricelog.lastUpdatedPrice = oracles.lastPrice;
+                pricelog.lastUpdatedPrice = oracle.lastPrice;
                 activeOracle = activeOracle.add(1);
             }
         }
@@ -140,13 +140,13 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
     function updateTargetPrice() internal {
         uint256 length = oracleInfo.length;
         for(uint256 i=0; i<length; i++) {
-            OracleInfo storage oracles = oracleInfo[i];
-            if(oracles.isActive == true) {
-                int256 latestPrice = EACAggregatorProxy(oracles.oracleAddress).latestAnswer();
-                uint8 decimals = EACAggregatorProxy(oracles.oracleAddress).decimals();
+            OracleInfo storage oracle = oracleInfo[i];
+            if(oracle.isActive == true) {
+                int256 latestPrice = EACAggregatorProxy(oracle.oracleAddress).latestAnswer();
+                uint8 decimals = EACAggregatorProxy(oracle.oracleAddress).decimals();
                 uint256 restDec = SafeMath.sub(18, uint256(decimals));
                 latestPrice = int256(SafeMath.mul(uint256(latestPrice), 10**restDec));
-                oracles.lastPrice = latestPrice;
+                oracle.lastPrice = latestPrice;
             }
         }
     
@@ -164,12 +164,12 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * @param _isActive true if oracle is active otherwise inactive.
      * @param _symbolHash symbolHash of crypto currency.
      */
-    function updateOracles(uint256 _pid, address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
-        OracleInfo storage oracles = oracleInfo[_pid];
-        require(oracles.oracleAddress != address(0), "No Oracle Found");
-        oracles.oracleAddress = _oracle;
-        oracles.isActive = _isActive;
-        oracles.symbolHash = _symbolHash;
+    function updateOracle(uint256 _pid, address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
+        OracleInfo storage oracle = oracleInfo[_pid];
+        require(oracle.oracleAddress != address(0), "No Oracle Found");
+        oracle.oracleAddress = _oracle;
+        oracle.isActive = _isActive;
+        oracle.symbolHash = _symbolHash;
     }
 
     /**
@@ -177,7 +177,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
      * @param _isActive true if oracle is active otherwise inactive.
      * @param _symbolHash symbolHash of crypto currency.
      */
-    function addOracles(address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
+    function addOracle(address _oracle, bool _isActive, bytes32 _symbolHash) public onlyOwner {
         oracleInfo.push(OracleInfo({
                 oracleAddress: _oracle,
                 isActive: _isActive,
