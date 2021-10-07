@@ -125,7 +125,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
         if(averageLog.referenceRate == 0) {
             averageLog.referenceRate = decimals;
         }
-        int256 refRate = divUnderFlow(mulUnderFlow(averageLog.referenceRate, addUnderFlow(decimals, divUnderFlow(mulUnderFlow(decimals, avgMovement), 10000000))), decimals);
+        int256 refRate = divUnderFlow(mulUnderFlow(averageLog.referenceRate, addUnderFlow(decimals, divUnderFlow(mulUnderFlow(decimals, avgMovement), 100000))), decimals);
 
         averageLog.averageMovement = avgMovement;
         averageLog.referenceRate = refRate;
