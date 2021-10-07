@@ -108,8 +108,7 @@ contract OraclePrice is Ownable, KeeperCompatibleInterface {
             OracleInfo storage oracle = oracleInfo[i];
             if(oracle.isActive == true) {
                 PriceLog storage pricelog = priceLog[oracle.oracleAddress];
-                PriceLog storage pricelogs = priceLog[oracle.oracleAddress];
-                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracle.lastPrice, pricelogs.lastUpdatedPrice), 100000), oracle.lastPrice));
+                sumPrice = addUnderFlow(sumPrice, divUnderFlow(mulUnderFlow(subUnderFlow(oracle.lastPrice, pricelog.lastUpdatedPrice), 100000), oracle.lastPrice));
                 if(pricelog.lastUpdatedPrice == 0) {
                     sumPrice = 0;
                 }
