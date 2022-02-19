@@ -1,4 +1,5 @@
 pragma solidity 0.4.24;
+pragma experimental ABIEncoderV2;
 
 import "./library/SafeMath.sol";
 import "./library/SafeMathInt.sol";
@@ -16,8 +17,15 @@ contract OmsPolicy is Ownable {
 
     event LogRebase(
         uint256 indexed epoch,
+        uint256 targetRate,
         uint256 exchangeRate,
         int256 requestedSupplyAdjustment,
+        uint256 timestampSec
+    );
+
+    event LogTargetPrice(
+        uint256 lastTargetPrice,
+        uint256 newTargetPrice,
         uint256 timestampSec
     );
 
@@ -59,11 +67,18 @@ contract OmsPolicy is Ownable {
     // Due to the expression in computeSupplyDelta(), MAX_RATE * MAX_SUPPLY must fit into an int256.
     // Both are 18 decimals fixed point numbers.
     uint256 private constant MAX_RATE = 2 * 10**DECIMALS;
+    
     // MAX_SUPPLY = MAX_INT256 / MAX_RATE
     uint256 private constant MAX_SUPPLY = ~(uint256(1) << 255) / MAX_RATE;
 
     // target rate 1
-    uint256 private constant TARGET_RATE = 1 * 10**DECIMALS;
+    uint256 private TARGET_RATE = 1 * 10**DECIMALS;
+
+    // last target price
+    uint256 public lastTargetPrice = 1 * 10**DECIMALS;
+
+    // whitelist admin
+    mapping(address => bool) public admins;
 
     // This module orchestrates the rebase execution and downstream notification.
     address public orchestrator;
@@ -71,6 +86,39 @@ contract OmsPolicy is Ownable {
     modifier onlyOrchestrator() {
         require(msg.sender == orchestrator, 'Only Orchestrator can call this function');
         _;
+    }
+
+    modifier onlyAdmin() {
+        require(admins[msg.sender] == true, "Not admin role");
+        _;
+    }
+
+    // set Admin
+    function setAdmin(address _admin, bool _status)
+        external
+        onlyOwner
+    {
+        require(admins[_admin] != _status, "already admin role");
+        admins[_admin] = _status;
+    }
+
+    // set target price
+    function setTargetPrice(uint256 _targetPrice)
+        external
+        onlyAdmin
+    {
+        lastTargetPrice = TARGET_RATE;
+        TARGET_RATE = _targetPrice;
+        emit LogTargetPrice(lastTargetPrice, TARGET_RATE, block.timestamp);
+    }
+
+    // return current target price
+    function targetPrice() 
+       external 
+       view 
+       returns (uint256) 
+    {
+       return TARGET_RATE;
     }
 
     /**
@@ -117,7 +165,7 @@ contract OmsPolicy is Ownable {
         marketOracle.sync();
 
         assert(supplyAfterRebase <= MAX_SUPPLY);
-        emit LogRebase(epoch, exchangeRate, supplyDelta, now);
+        emit LogRebase(epoch, targetRate, exchangeRate, supplyDelta, now);
     }
 
     /**

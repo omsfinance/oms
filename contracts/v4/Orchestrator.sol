@@ -19,6 +19,7 @@ contract Orchestrator is Ownable {
     }
 
     event TransactionFailed(address indexed destination, uint index, bytes data);
+    event LogOmsPolicyUpdated(address omsPolicy);
 
     // Stable ordering is not guaranteed.
     Transaction[] public transactions;
@@ -32,6 +33,15 @@ contract Orchestrator is Ownable {
         require(policy_ != address(0), 'The address can not be a zero-address');
         Ownable.initialize(msg.sender);
         policy = OmsPolicy(policy_);
+    }
+
+    /**
+     * @param omsPolicy_ The address of the oms policy contract to use.
+     */
+    function setOmsPolicy(address omsPolicy_) external onlyOwner {
+        require(omsPolicy_ != address(0), 'The address can not be a zero-address');
+        policy = OmsPolicy(omsPolicy_);
+        emit LogOmsPolicyUpdated(omsPolicy_);
     }
 
     /**

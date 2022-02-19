@@ -11,6 +11,7 @@
     "start": "truffle develop",
     "build": "truffle compile --config=contracts/v4/config.js && truffle compile --config=contracts/v6/config.js",
     "test": "truffle test --show-events --config=contracts/v4/config.js && truffle test --show-events --config=contracts/v6/config.js",
+    "flatten": "truffle-flattener contracts/v4/Oms.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' > scratch/Oms.sol && truffle-flattener contracts/v4/OmsPolicy.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' > scratch/OmsPolicy.sol && truffle-flattener contracts/v4/Orchestrator.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' > scratch/Orchestrator.sol && truffle-flattener contracts/v6/Oracle.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' > scratch/Oracle.sol && truffle-flattener contracts/v6/OraclePrice.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' > scratch/OraclePrice.sol",
     "run95": "eth95 ./build/contracts"
   },
   "author": "",
@@ -20,14 +21,15 @@
     "zos-lib": "^2.2.2"
   },
   "dependencies": {
-    "truffle": "5.2.3",
+    "@openzeppelin/contracts": "3.4.0",
     "ganache-cli": "6.12.2",
     "bignumber.js": "^9.0.1",
     "chai": "^4.1.2",
     "chai-bignumber": "^2.0.2",
     "eth95": "^0.1.3",
     "openzeppelin-eth": "2.0.2",
-    "@openzeppelin/contracts": "3.4.0",
-    "stochasm": "^0.5.0"
+    "stochasm": "^0.5.0",
+    "truffle": "^5.4.6",
+    "truffle-flattener": "^1.5.0"
   }
 }
